@@ -97,7 +97,6 @@
 105:sample
 540:item
 584:probably
-100:become
 343:regular
 651:stop
 233:soon
@@ -255,7 +254,6 @@
 2194:back
 872:every
 901:since
-100:sale
 843:wait
 1174:take
 270:kid
@@ -393,7 +391,6 @@
 162:middle
 222:exactly
 522:thought
-100:lost
 305:rather
 138:block
 454:looked
@@ -472,7 +469,6 @@
 250:friday
 810:favorite
 118:original
-100:certain
 156:cannot
 149:beat
 118:meatball
@@ -775,7 +771,6 @@
 149:whatever
 179:greasy
 220:packed
-100:barely
 262:floor
 230:pancake
 337:plate
@@ -792,7 +787,6 @@
 105:smaller
 217:card
 118:perhaps
-100:tuna
 290:warm
 304:variety
 107:topped
@@ -815,13 +809,11 @@
 191:cup
 134:stayed
 133:total
-100:fabulous
 232:space
 138:weird
 118:expecting
 160:picture
 193:along
-100:surprise
 102:whenever
 156:chance
 218:chain
@@ -842,7 +834,6 @@
 113:story
 112:addition
 127:nearby
-100:particularly
 322:chocolate
 126:paying
 140:bed
@@ -858,7 +849,6 @@
 281:guess
 172:delivery
 335:tasted
-100:gyro
 109:paper
 127:sad
 244:others
@@ -872,7 +862,6 @@
 109:sent
 103:showed
 113:online
-100:forgot
 107:negative
 194:hate
 147:professional
@@ -966,7 +955,6 @@
 126:eagle
 105:indian
 107:history
-100:hummus
 119:martini
 125:river
 111:tofu
@@ -1037,4 +1025,3 @@
 120:grocery;store
 122:giant;eagle
 103:reasonably;priced
-100:pasta;trio
