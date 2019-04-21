@@ -1,226 +1,186 @@
 import pandas as pd
 import numpy as np
 
-# create Tree class
-class Tree:
-    def __init__(self):
-        self.left = None
-        self.right = None
-        self.data = None
-        self.root = None
-        self.depth = 0
-        # rule of decision tree
-        self.rule = None
-        # test dataset
-        self.test = None
-        # set gini
-        self.gini = None
-        
-    def get_depth(self):
-        if self.root == None:
-            return self.depth
-        else:
-            return self.root.get_depth()+1
-        
-    # set left node
-    def set_left(self, left):
-        self.left = left
-        left.root = self
-    
-    # set right node
-    def set_right(self, right):
-        self.right = right
-        right.root = self
-        
-    # set rules
-    def set_rule(self, column, feature):
-        self.rule = (column, feature)
-    
-    # set test data
-    def set_test(self, test):
-        self.test = test
-        
-    # get left node
-    def get_left(self):
-        return self.left
-    
-    # get right node
-    def get_right(self):
-        return self.right
-    
-    # get rules
-    def get_rules(self):
-        return self.rule
-        
-    # check if leaf
-    def is_leaf(self):
-        return (self.left is None and self.right is None)
-    
-    # predict label based on data
-    def get_label(self):
-        n = self.data.shape[0]
-        result = self.data.groupby('label')[0].count()/n
-        label = result.idxmax()
-        return label
-
 # Decision tree class
 class DecisionTree:
     
-    def __init__(self, max_depth = 3, min_node = 50, threshold = 0.1):
+    def __init__(self, max_depth = 3, min_node = 50, min_leaf=30, threshold = 0.1):
         self.root = None
         self.max_depth = max_depth
         self.min_node = min_node
+        self.min_leaf = min_leaf
         self.threshold = threshold
         
-        
-    # loop over every split and return best gini index
-    def test_split(self, node):
-        train = node.data
-        ## calculate gini
-        n = train.shape[0]
-        gini_list = []
+    # calculate gini
+    def get_gini(self, data):
+        n = data.shape[0]
+        label_count = data.groupby('label')['label'].count()
+        prob = label_count/n
 
-        # loop over columns except labels
-        for column in train.iloc[:,:-1]:
-            for feature in np.unique(train[column]):
-                gini = self.get_gini(train, column, feature)
-                gini_list.append((column, feature, gini))
+        return 1-np.sum(np.square(prob))
+    
+    # split data
+    def data_split(self, data, column, feature):
+        left = data[column][data[column]==feature].index.values
+        right = data[column][data[column]!=feature].index.values
 
-        column, feature, min_gini = min(gini_list, key=lambda x: x[2])
+        return left, right
+    
+    # predict label
+    def get_label(self, data):
+        label_count = data.groupby('label')['label'].count()
 
-        return column, feature, min_gini
-        
-        
+        return label_count.idxmax()
+    
+    # build tree
     def build(self, data):
-        root = Tree()
-        root.data = data
-        search_list = [root]
+        ## Build Tree
+        max_depth = self.max_depth
+        threshold = self.threshold
+        min_node = self.min_node
+        min_leaf = self.min_leaf
+        self.data = data.copy()
+
+        # data copy
+        data_copy = data.copy()
+
+        ## setup
+        depth = 0
+        result_list = []
+        search_list = [(data_copy.index.values, depth)]
+        base_gini_list = [self.get_gini(data_copy)]
 
         # breadth first search
         while search_list:
-            #print('search_list length: '+str(len(search_list) ))
-            node = search_list.pop(0)
-            # depth check
-            #print('node depth: '+str(node.get_depth()))
-            if node.get_depth() >= self.max_depth:
+
+            node, depth = search_list.pop(0)
+            base_gini = base_gini_list.pop(0)
+            train = data_copy.loc[node]
+            gini_list = []
+
+            # case used all columns
+            if train.shape[1] <=1:
+                break
+
+            # case when depth is higher than max_depth
+            if depth >= max_depth:
+                result_list.append((None, None, None))
                 continue
 
-            # get gini based best split
-            column, feature, min_gini = self.test_split(node)
-            
-            # when gini is less than threshold
-            node.gini = self.get_gini(node.data)
-            if node.gini - min_gini < self.threshold:
-                continue
-            
-            # divide according to split
-            left, right = self.get_split(node.data, column, feature)
-
-            # node number check
-            #print('left data: '+ str(left.data.shape[0]))
-            #print('right data: '+ str(right.data.shape[0]))
-
-            if left.data.shape[0] <= self.min_node | right.data.shape[0] <= self.min_node:
+            n = len(node)
+            # case when node is too small to split
+            if n <= min_node:
+                result_list.append((None, None, None))
                 continue
 
-            # set left and right of node
-            node.set_left(left)
-            node.set_right(right)
-            node.set_rule(column, feature)
+            # loop over columns except labels
+            for column in train.iloc[:,:-1]:
+                for feature in np.unique(train[column]):
+                    left_idx, right_idx = self.data_split(train, column, feature)
 
-            # append nodes
-            search_list.append(left)
-            search_list.append(right)
-            
-            # set gini
-            left.gini = min_gini
-            right.gini = min_gini
-            
-        # put root into self
-        self.root = root
-        
-    # calculate gini index
-    def get_gini(self, data, column = None, feature = None):
-        n = data.shape[0]
-        
-        # get gini for data
-        if column is None:
-            column_count = data.groupby('label').count()[0]
-            
-            prob = column_count/n
-            gini = 1-np.sum((prob**2))
-            
-        # get gini for data split
-        else:
-            # counts of each attribute, each class(label) count
-            column_count = data.groupby(column)[column].count()
-            class_count = data.groupby([column, 'label'])[column].count()
+                    # check if splits are smaller than min_leaf
+                    left_n = len(left_idx)
+                    right_n = len(right_idx)
+                    if left_n > min_leaf and right_n > min_leaf:
+                        left_ratio = left_n/n
+                        right_ratio = right_n/n
+                        gini = left_ratio*self.get_gini(train.loc[left_idx])+right_ratio*self.get_gini(train.loc[right_idx])
+                        gini_list.append((column, feature, gini))
 
-            # gini for left split
-            class_exclude = class_count.unstack().drop(index = feature).sum()
-            column_exclude = column_count.drop(index=feature).sum()
-            prob_exclude = class_exclude/column_exclude
-            ratio_exclude = column_exclude/n
-            gini_exclude = (1-np.sum((prob_exclude)**2))
+            # find minimum gini
+            if len(gini_list) <1:
+                result_list.append((None, None, None))
+                continue
+            column, feature, min_gini = min(gini_list, key= lambda x: x[2])
+            #print('min gini: '+ str(min_gini))
 
-            # gini for right split
-            class_feature = class_count.unstack().loc[feature]
-            column_feature = column_count.loc[feature].sum()
-            prob_feature = class_feature/column_feature
-            ratio_feature = column_feature/n
-            gini_feature = (1-np.sum((prob_feature)**2))
+            # check if satisfies threshold
+            if base_gini-min_gini < threshold:
+                result_list.append((None, None, None))
+                continue
 
-            # combine two gini index
-            gini = ratio_exclude*gini_exclude+ratio_feature*gini_feature
-        
-        return gini
+            # remove used column
+            left_idx, right_idx = self.data_split(train, column, feature)
+            data_copy = data_copy.drop(columns=column)
 
-        
-    # split based on data
-    def data_split(self, data, column, feature):
-        left_data = data[data[column]==feature]
-        right_data = data[data[column]!=feature]
-        return left_data, right_data
-    
-    # split based on data
-    def get_split(self, data, column, feature):
-        # split data
-        left_data, right_data = self.data_split(data, column, feature)
+            # append left and right node
+            depth +=1
+            result_list.append((column, feature, depth))
+            search_list.append((left_idx, depth))
+            search_list.append((right_idx, depth))
 
-        left = Tree()
-        right = Tree()
-        left.data =  left_data
-        right.data = right_data
+            # update base_gini and appends left, right base_gini
+            base_gini = min_gini
+            base_gini_list.append(base_gini)
+            base_gini_list.append(base_gini)
 
-        return left, right
-        
+            # print((column, feature, depth))
+            # print('left num: '+str(len(left_idx)))
+            # print('right num: '+str(len(right_idx)))
+            # print('new base gini: '+str(base_gini) + '\n')
+        self.result_list = result_list
+
     # predict
     def predict(self, test):
-        # create empty predict
-        pred = test.copy()
-        pred['predict'] = None
-        
-        self.root.test = test
-        divide_list = [self.root]
+        # copy test set
+        test_set = test.copy()
+        train_set = self.data.copy()
 
-        # breadth first search
-        while divide_list:
-            node = divide_list.pop(0)
+        # setup
+        split_list = self.result_list.copy()
+        train_set['predict'] = None
+        test_set['predict'] = None
+        train_list = [train_set.index]
+        test_list = [test_set.index]
+        min_node = self.min_node
+        min_leaf = self.min_leaf
 
-            # when node is leaf
-            if node.is_leaf():
-                # set predicted label
-                pred.loc[node.test.index, 'predict'] = node.get_label()
+        while split_list:
+            # get split criteria and datasets from each
+            column, feature, depth = split_list.pop(0)
+
+            #print(str(column)+' '+str(feature)+', '+str(depth))
+            train_idx = train_list.pop(0)
+            test_idx = test_list.pop(0)
+            train = train_set.loc[train_idx]
+            test = test_set.loc[test_idx]
+
+            # certain condition not met
+            if column is None:
                 continue
 
-            column, feature = node.get_rules()
-            left_data, right_data = self.data_split(node.test, column, feature)
+            n = len(train_idx)
+            if n <= min_node:
+                continue
 
-            node.left.set_test(left_data)
-            node.right.set_test(right_data)
+            train_left_idx, train_right_idx = self.data_split(train, column, feature)
+            test_left_idx, test_right_idx = self.data_split(test, column, feature)
 
-            divide_list.append(node.left)
-            divide_list.append(node.right)
+            # set label
+            left_label = self.get_label(train_set.loc[train_left_idx])
+            right_label = self.get_label(train_set.loc[train_right_idx])
+            # test set labels
+            test_set.loc[test_left_idx, 'predict'] = left_label
+            test_set.loc[test_right_idx, 'predict'] = right_label
+            # train set labels
+            train_set.loc[train_left_idx, 'predict'] = left_label
+            train_set.loc[train_right_idx, 'predict'] = right_label
 
-        return pred['predict']
+            # put on the list
+            if len(train_left_idx) > min_leaf and len(train_right_idx) > min_leaf:
+                train_list.append(train_left_idx)
+                train_list.append(train_right_idx)
+                test_list.append(test_left_idx)
+                test_list.append(test_right_idx)
         
+        return test_set.predict
+
+
+
+
+
+
+
+
+
+
