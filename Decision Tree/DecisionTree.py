@@ -31,7 +31,7 @@ class DecisionTree:
         label_count = data.groupby('label')['label'].count()
 
         return label_count.idxmax()
-    
+
     # build tree
     def build(self, data):
         ## Build Tree
@@ -39,7 +39,7 @@ class DecisionTree:
         threshold = self.threshold
         min_node = self.min_node
         min_leaf = self.min_leaf
-        self.data = data.copy()
+        self.data = data
 
         # data copy
         data_copy = data.copy()
@@ -113,18 +113,15 @@ class DecisionTree:
             base_gini = min_gini
             base_gini_list.append(base_gini)
             base_gini_list.append(base_gini)
-
-            # print((column, feature, depth))
-            # print('left num: '+str(len(left_idx)))
-            # print('right num: '+str(len(right_idx)))
-            # print('new base gini: '+str(base_gini) + '\n')
         self.result_list = result_list
 
     # predict
     def predict(self, test):
+        ## predict
         # copy test set
         test_set = test.copy()
         train_set = self.data.copy()
+        min_node = self.min_node
 
         # setup
         split_list = self.result_list.copy()
@@ -132,14 +129,11 @@ class DecisionTree:
         test_set['predict'] = None
         train_list = [train_set.index]
         test_list = [test_set.index]
-        min_node = self.min_node
-        min_leaf = self.min_leaf
 
         while split_list:
             # get split criteria and datasets from each
             column, feature, depth = split_list.pop(0)
 
-            #print(str(column)+' '+str(feature)+', '+str(depth))
             train_idx = train_list.pop(0)
             test_idx = test_list.pop(0)
             train = train_set.loc[train_idx]
@@ -167,11 +161,11 @@ class DecisionTree:
             train_set.loc[train_right_idx, 'predict'] = right_label
 
             # put on the list
-            if len(train_left_idx) > min_leaf and len(train_right_idx) > min_leaf:
-                train_list.append(train_left_idx)
-                train_list.append(train_right_idx)
-                test_list.append(test_left_idx)
-                test_list.append(test_right_idx)
+            # if len(train_left_idx) > min_leaf and len(train_right_idx) > min_leaf:
+            train_list.append(train_left_idx)
+            train_list.append(train_right_idx)
+            test_list.append(test_left_idx)
+            test_list.append(test_right_idx)
         
         return test_set.predict
 
